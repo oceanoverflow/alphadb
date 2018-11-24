@@ -1,0 +1,14 @@
+A schema is a set of objects (tables, indexes, views, etc) that belong to a user. 
+In Oracle, a user can be considered the same as a schema. A database instance can have
+multiple users/schemas. A table as an object can be accessed from the current user's
+schema or from a different schema, when provided with proper access privileges.
+
+So when we run the query by referencing it as SchemaName.TableName, It 
+points to the TableName owned by user SchemaName.
+
+When we directly refer to the TableName (as select * from TableName), 
+two things could be possible.
+
+* There is a table by the name TableName in your current schema.
+* There is a table by the name TableName in another schema and a public
+synonym is created for the table.

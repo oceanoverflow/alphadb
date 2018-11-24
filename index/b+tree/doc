@@ -1,0 +1,75 @@
+Disk structure:
+
+platter -> track -> sector (block=4096Bytes)==> addressable <track_no, sector_no> offset
+
+page layout: 
+
+degree_: N
+page_size_ = (4KB-4B)
+degree can also be calculated: N = std::floor( page_size_ / (sizeof(RID) + sizeof(KEY)) )
+
+for [internal] node:
+KEY[n-1] is a PSEUDO key, RID<page, slot>, for interval node, just p works, s is not important. <===> RID<p, -1>  
+
+         RID0 < KEY0 <= RID1 < KEY1 <= RID2 < KEY2 <= RID3 < KEY3 <= ...... < KEY[n-2] <= RID[n-1] < (<<<<<<<<<<KEY[n-1]>>>>>>>>>)p
+          |              |              |              |                                    |
+p{0}<-----+              |              |              |                                    +------>p{n-1}
+                         |              |              |
+                p1<------+              |              +------>p{3}
+                                        |
+                                        v
+                                      p{2}
+
+for   {leaf}   node:
+RID[n-1] is the pointer to the next leaf, KEY[n-1] is also a PSEUDO key,  
+other RIDi points to the record in the table, and KEYi is the index key, here i < [n-1]
+
+       (RID0, KEY0) <= (RID1, KEY1) <= (RID2, KEY2) <= (RID3, KEY3)  ........... <= (RID[n-1], KEY[n-1]) <= (RID[n-1], KEY[n-1]x)      +------------------------->***nextleaf***
+          |               |               |               |                              |                      |                      |
+          |               |               |               |                              |                      +----------------------+
+          |               |               |               |                              v
+          |               |               |               v                       (p{n-2},s{n-2})
+          |               |               v            (p3,s3)
+          |               v            (p2,s2)
+          v            (p1,s1)
+       (p0,s0)
+
+                                                logical view:
++--------------+--------------+--------------+--------------+-------------------------------------+----------------------+
+| (RID0, KEY0) | (RID1, KEY1) | (RID2, KEY2) | (RID3, KEY3) | ....................................| (RID[n-1], KEY[n-1]) |
++--------------+--------------+--------------+--------------+-------------------------------------+----------------------+
+
+
+
+                                                physical view:
++---+------+------+------+----------+------+------+------+----------+------------------------------------------------------+
+| n | RID0 | RID1 |......| RID[n-1] | KEY0 | KEY1 |......| KEY[n-1] |                     free_space                       |
++---+------+------+------+----------+------+------+------+----------+------------------------------------------------------+
+
+   
+
+                              +--------------+
+                              |p0|k0|p1|k1|p2|    internal_node
+                              +--------------+
+                             /       |        \
+                            /        |         \
+                           /         v          \
+           +--------------+   +--------------+   +--------------+
+ first --> |r0|k0|r1|k1|n2|-->|r3|k3|r4|k4|n2|-->|r5|k5|r6|k6|n3| --> last (nullptr)  leaf_node
+           +--------------+   +--------------+   +--------------+
+             |     |            |     |            |     |
+             |     |            |     |            |     |
+             v     v            v     v            v     v
+            ***   ***          ***   ***          ***   ***
+     
+     degree = 7  max_node = 6; min_node = 3
+
+   1.  node->move_half_to(node* receiver)         [when splitting]  
+           begin:  |*******|             end: |****| -> |***|                  ***|||insert|||*** 
+   2.  node->move_all_to(node* receiver)          [when the node is underflow]   
+           begin:  |****| <- |**|        end: |*****|                          ***|||delete|||*** coalesce
+   3.  node->move_first_to_end_of(node* receiver) [when the node is overflow, and left neighbor is not]  
+           begin:  |*****| <- |*******|  end: |******| <-> |******|            ***|||insert|||*** redistribute
+   4.  node->move_last_to_front_of(node* receiver) [same as last one, but this time the right neighbor is not] 
+           begin:  |*******| -> |*****|  end: |******| <-> |******|            ***|||insert|||*** redistribute
+

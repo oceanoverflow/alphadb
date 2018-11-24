@@ -1,0 +1,57 @@
+Paxos is a family of distributed algorithms used to reach consensus
+
+consensus is agreeing on one result
+once a majority agrees on a proposal, that is the consensus.
+The reached consensus can be eventually known by everyone.
+The involved parites want to agree on any result, not on their proposal.
+Communication channels may be faulty, that is, messages can get lost.
+
+* Paxos defines three roles: proposers, acceptors, and learners
+* Paxos nodes can take multiple roles, even all of them
+* Paxos nodes must known how many acceptors a majority is
+    (two majority will always overlap in at least one node.)
+* Paxos nodes must be persistent: they can't forget what they accepted.
+
+A Paxos run aims at reaching a single consensus.
+Once a consensus is reached, it cannot progress to another consensus.
+In order to reach another consensus, a different Paxos run must happen.
+
+                                                                                                   time -->
++----------+ PREPARE 5      ACCEPT-REQUEST 5, 'cat'
+| Proposer |------------------------------------------------------------------------------------------------------------->
++----------+     \\\           ///     \\\           ///
+                  \\\         ///       \\\         /// +----> Learners
++----------+       \\\       ///         \\\       /// /
+| Acceptor |------------------------------------------------------------------------------------------------------------->
++----------+         PROMISE 5           ACCEPT 5, 'cat'
++----------+
++----------+
+
+Proposer wants to propose a certain value:
+It sends PREPARE IDp to a majority (or all) of Acceptors.
+IDp must be unique, e.g slotted timestamp in nanoseconds.
+e.g. Proposer 1 chooses IDs 1,3,5...
+     Proposer 2 chooess IDs 2,4,6...,etc.
+    Timeout? retry with a new (higher) IDp
+
+Acceptor receives a PREPARE message for IDp:
+Did it promise to ignore requests with this IDp?
+    Yes -> then ignore
+    No -> Will promise to ignore any request lower than IDp.
+        (?) Reply with PROMISE IDp
+If a majority of acceptors promise, no ID < IPp can make it through.
+
+Proposer gets majority of PROMISE messages for a specific IPp:
+    It sends ACCEPT-REQUEST IDp, VALUE to a majority (or all) of Acceptors.
+    (?) It picks any value it wants.
+
+Acceptor receives an ACCEPT-REQUEST message for IDp, value:
+    Did it promise to ignore requests with this IDp?
+    Yes -> then ignore
+    No -> Reply with ACCEPT IDp, value, Also send it to all learners.
+    (If a majority of acceptors accept IDp, value, consensus is reached.
+    Consensus is and will always be on value(not necessarily IDp.))
+
+Proposer or Learner get ACCEPT messages for IDp, value:
+    If a proposer/learner gets majority of accept for a specific IDp,
+    they know that consensus has been reached on value (not IDp.)

@@ -1,0 +1,30 @@
+                          +--------+
+                          |raft    |
+                          |Follower|
+                          +--------+
+                          / storage \
+                         /  engine!  \
+               +--------+-------------+--------+
+               |raft    |             |raft    |
+               |Leader  |             |Follower|
+               +--------+             +--------+
+                    ^
+                    |
+                    |
+                    |
++------+            | 
+|client|------------+
++------+
+
+
+replicate then reply || reply then replicate ?
+for read  ==> should be reply then replicate
+for write ==> should be replicate then reply
+                                                                              ______ raft follower1
+                                                                             /
+                                                                            /               
+  client -----> server(s1) -----> state machine (db) -----> raft leader(s2)
+                                                                            \
+                                                                             \______ raft follower2
+
+

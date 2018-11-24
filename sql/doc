@@ -1,0 +1,144 @@
+lex is a scanner generator.
+    input is a set of regular expressions and associated actions (written in C)
+    output is a table-driven scanner (lex.yy.c)
+
+flex: an open source implementation of the original UNIX lex utility
+
+lex: semantic analysis 
+    -> splits the input file into tokens
+yacc: yet another compiler compiler 
+    -> parses and does semantic processing on the stream of tokens produced by lex
+bison: GNU parser parser, upward compatibility with yacc.
+
+            lex input                             example(.l) exl.l
+
+        FIRST PART(optional)                   %{ #include "myscanner.h" %}
+        %%                                     %%
+        keyword first!!!                       "select"        select();
+        pattern      action                    "hello world"   printf("GOODBYE\n")
+        ....(regular expressions)              :               return COLON;
+        %%                                     %%
+        THIRD PART                             int yywrap(void) { return 1; }
+
+             yacc input                        
+        FIRST PART                              %{ C declarations; yacc definitions;  %}
+        %%                                      %%
+        production   action                     statements: statement {printf("statement");}
+        ....                                        | statement statements {printf("statements");}
+                                                    ;
+        %%                                      %%
+        THIRD PART
+
+$ yacc -d sql.y                // generate y.tab.h && y.tab.c
+$ lex sql.l                    // process the lex file to generate a scanner (gets saved as lex.yy.c)
+$ gcc lex.yy.c y.tab.c -o sqls // compile the scanner and grab main() from the lex library (-ll option)
+$ ./a.out                      // run the scanner taking input from standard input
+
+              lex pattern examples
++-----------+-------------------------------------------------------------------------------+
+|abc        | match the string "abc"                                                        |
++-----------+-------------------------------------------------------------------------------+
+|[a-zA-Z]   | match any lower or uppercase letter                                           |
++-----------+-------------------------------------------------------------------------------+
+|dog.*cat   | match any string starting with dog, and ending with cat.                      |
++-----------+-------------------------------------------------------------------------------+
+|(ab)+      | match one or more occurrences of "ab" concatenated.                           |
++-----------+-------------------------------------------------------------------------------+
+|[^a-z]+    | matches any string of one or more characters that do not includ lower case a-z|
++-----------+-------------------------------------------------------------------------------+
+|[+-]?[0-9]+| match any string of one or more digists with an optional prefix of + or -.    |
++-----------+-------------------------------------------------------------------------------+
+
+  source code         a = b + c * d
+                            |
+                            v
+                   +----------------+         +---+
+                   |Lexical Analyzer|<--------|Lex|<------- patterns
+                   +----------------+         +---+
+                            |
+    tokens                  v
+                    +---------------+         +----+
+                    |Syntax Analyzer|<--------|Yacc|<------ grammers (context free)
+                    +---------------+         +----+
+                            |
+  syntax tree               v
+                          /   \
+                        id1    +
+                             /   \
+                           id2    *
+                            |   /   \
+                            | id3    id4
+                            v
+                     +--------------+
+                     |code generator|
+                     +--------------+
+                            |
+   generated code           v
+                        load  id3
+                        mul   id4
+                        add   id2
+                        store id1
+
+
+                   +------------+
+     mylang.y  --> |    yacc    | --> y.tab.c _ 
+                   +------------+              \               source
+                         |                      \               code
+                         |                       \               |
+                         v                        +--------+     v
+                      y.tab.h                     |  gcc   |--> mylang
+                         |                        +--------+     |
+                         v                       /               v
+                   +-----------+                /           compiled code
+     mylang.l -->  |    lex    | --> lex.yy.c _/          interpreter output
+                   +-----------+
+
+                   Supported SQL Queries
+=====================
+
+## Select Statements
+
+```sql
+SELECT name, city, *
+    FROM students AS t1 JOIN students AS t2 ON t1.city = t2.city
+    WHERE t1.grade < 2.0 AND
+          t2.grade > 2.0 AND
+          t1.city = 'Frohnau'
+    ORDER BY t1.grade DESC;
+
+SELECT city, AVG(grade) AS average,
+    MIN(grade) AS best, MAX(grade) AS worst
+    FROM students
+    GROUP BY city;
+```
+
+## Data Definition & Modification
+
+**Create Tables**
+```sql
+CREATE TABLE students (
+    name TEXT,
+    student_number INTEGER,
+    city TEXT,
+    grade DOUBLE
+);
+```
+
+**Update and Delete**
+```sql
+UPDATE students SET name='Max Mustermann' WHERE name = 'Ralf Mustermann';
+
+DELETE FROM students WHERE name = 'Max Mustermann';
+```
+
+A compilr or interpreter for a progromming language is often decomposed into two parts:
+
+1. Read the source program and discover its structure.
+2. Process this structure, e.g. to generate the target program.
+
+Lex and Yacc can generate program fragments that solve the first task.
+
+The task of discovering the source structure again is decomposed into subtasks:
+
+1. Split the source file into tokens (Lex)
+2. Find the hierarchical structure of the program (Yacc).
