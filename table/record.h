@@ -1,37 +1,10 @@
 #pragma once
 
 #include "rid.h"
+#include "schema.h"
 
 #include <vector>
 #include <iostream>
-
-enum class data_type
-{
-    UNKNOWN,
-    INT, 
-    LONG,
-    FLOAT, 
-    DOUBLE,
-    CHAR, 
-    VARCHAR
-};
-
-struct column_type
-{
-    column_type() = default;
-    column_type(data_type type, int64_t length);
-    data_type type;
-    int64_t length;
-};
-
-struct column_definition
-{
-    column_definition(char* name, column_type type, bool nullable);
-    virtual ~column_definition();
-    char* name;
-    column_type type;
-    bool nullable;
-};
 
 class record
 {

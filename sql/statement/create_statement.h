@@ -22,6 +22,7 @@ struct create_statement: statement
     create_type type;
     char* schema_name;
     char* table_name;
+    char* index_name;
     char* index_column;
     std::vector<column_definition *>* columns;
 };
@@ -31,6 +32,7 @@ create_statement::create_statement(create_type type):
     type{type},
     schema_name{nullptr},
     table_name{nullptr},
+    index_name{nullptr},
     index_column{nullptr},
     columns{nullptr} {}
 
@@ -38,6 +40,7 @@ create_statement::~create_statement()
 {
     free(schema_name);
     free(table_name);
+    free(index_name);
     free(index_column);
     
     if (columns != nullptr) {

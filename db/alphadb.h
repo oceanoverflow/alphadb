@@ -4,6 +4,7 @@
 #include <string>
 #include "sql.h"
 
+#include "schema.h"
 #include "io_manager.h"
 #include "txn_manager.h"
 #include "index_manager.h"
@@ -36,7 +37,7 @@ private:
     bool drop_db(const std::string& name);       // DONE
 
     // CREATE TABLE students (name STRING, student_number INTEGER, city STRING, grade DOUBLE);
-    bool create_table(const std::string& name);  // TODO 
+    bool create_table(const std::string& name, const schema& s);  // TODO 
     // DROP TABLE students; 
     bool drop_table(const std::string& name);    // TODO
     // SHOW TABLES;

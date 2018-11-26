@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rid.h"
+#include "schema.h"
 #include "record.h"
 #include "file_handle.h"
 #include "table_format.h"
@@ -19,8 +20,9 @@ class table_handle
 private:
     bool header_changed_;
     bool file_is_open_;
-    file_handle& file_handle_;
+    schema       schema_;
     table_header table_header_;
+    file_handle& file_handle_;
 public:
     table_handle();
     table_handle(file_handle& fh, table_header header);

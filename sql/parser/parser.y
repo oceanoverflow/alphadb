@@ -108,7 +108,7 @@ int yyerror(YYLTYPE* llocp, parser_result* result, yyscan_t scanner, const char*
 %token COLUMNS CREATE CHAR
 %token DROP DELETE DOUBLE
 %token FLOAT FROM FALSE
-%token INT INTO $INDEX$ INSERT INTEGER 
+%token INT INTO INDEX INSERT INTEGER 
 %token LONG
 %token SET SHOW SELECT
 %token TABLE TABLES TRUE TRUNCATE
@@ -191,10 +191,17 @@ show_stmt:
 
 create_stmt:
         CREATE TABLE table_name '(' column_def_commalist ')' {
-            $$ = new create_statement();
+            $$ = new create_statement(create_type::CREATE_TABLE);
             $$->schema_name = $3.schema_name;
             $$->table_name = $3.table_name;
             $$->columns = $5;
+        }
+    |   CREATE INDEX index_name ON table_name '(' column_def ')' {
+            $$ = new create_statement(create_type::CREATE_INDEX);
+            $$->index_name = $3;
+            $$->schema_name = $5.schema_name;
+            $$->table_name = $5.table_name;
+            $$->index_column = $7;
         }
     ;
 

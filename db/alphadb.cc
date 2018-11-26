@@ -81,9 +81,9 @@ bool alphadb::drop_db(const std::string& name)
     return true;       
 }
 
-bool alphadb::create_table(const std::string& name)
+bool alphadb::create_table(const std::string& name, const schema& s)
 {
-    tbl_mgr_->create_table(name.c_str());
+    tbl_mgr_->create_table(name.c_str(), s);
     return false;
 }
 
