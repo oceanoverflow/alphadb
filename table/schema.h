@@ -34,6 +34,9 @@ struct column_definition
     char* name;
     column_type type;
     bool nullable;
+
+    friend bool operator==(const column_definition& lhs, const column_definition& rhs);
+    friend bool operator!=(const column_definition& lhs, const column_definition& rhs);
 };
 
 class schema

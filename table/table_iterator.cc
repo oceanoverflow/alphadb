@@ -49,28 +49,35 @@ void table_iterator::reset()
     now_ = rid{-1, -1};
 }
 
+// TODO
+// here the schema assumes the record is of same length,
+// but we need variable length record to save some space
+// in case of VARCHAR in record
 bool table_iterator::fit(tuple_t t, const std::vector<criterion *>& cs) const
 {
     void* data = t.first;
     ssize_t len = t.second;
-    bool ret;
+    bool ret = true;
     
     for(int i = 0; i < cs.size(); i++)
     {
         auto cri = cs[i];
-        char* id = cri->column.name;
-        // column_id_t idx = tbl_handle_.schema_.col_name_to_id_[std::string(id)];
-        
         int offset = 0;
         
-        for(auto&& c : tbl_handle_.schema_.col_defs_)
+        for(auto c : tbl_handle_.schema_.col_defs_)
         {
-            // determine if equals, if equals then break
-            // if (equals) break;
+            if (c == cri->coldef) break;
             offset += c.type.length;
+
+            if (offset > len) {
+                ret = false;
+                break;
+            }
         }
+
+        if (ret == false) break;
         
-        // type conversion
+        ret = cri->eval(static_cast<char *>(data + offset));
 
         if (ret == false) break;
     }

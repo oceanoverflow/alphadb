@@ -32,9 +32,9 @@ struct criterion
 {
     criterion_type type;
     void* val;
-    column_type coltype;
+    column_definition coldef;
     
-    criterion(void* val, column_type coltype, criterion_type type);
+    criterion(void* val, column_definition coldef, criterion_type type);
     ~criterion();
 
     bool eval(char* buf) const;
