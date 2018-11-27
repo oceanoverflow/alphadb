@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rid.h"
+#include "schema.h"
 #include <vector>
 
 enum class criterion_type
@@ -10,15 +11,35 @@ enum class criterion_type
     LESS_EQUAL,
     GREATER_THAN,
     GREATER_EQUAL,
-    RANGE
 };
+
+/*
+criterion: WHERE x < 100;
+when scanning index or table, we first get the raw pointer to the object
+
+               +--- value should start here
+               v
+         +-----+----+-------------+
+         |     |    |             |
+         +-----+----+-------------+
+where the criterion itself is stable, it is the value we want to compare
+changes all the time, so when designing the criterion class, we need to
+specify the variant part which is designated as a void pointer, and based
+on the type of the value, we return a boolean based on the comparison result.
+*/
 
 struct criterion
 {
-    void* equal;
-    void* less;
-    void* greater;
     criterion_type type;
+    void* val;
+    column_type coltype;
+    
+    criterion(void* val, column_type coltype, criterion_type type);
+    ~criterion();
+
+    bool eval(char* buf) const;
+private:
+    bool internal_eval(char* buf, criterion_type type) const;
 };
 
 class iterator

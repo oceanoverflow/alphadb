@@ -39,6 +39,7 @@ struct column_definition
 class schema
 {
     friend class table_manager;
+    friend class table_iterator;
 private:
     std::vector<column_definition> col_defs_;
     std::unordered_map<std::string, column_id_t> col_name_to_id_;

@@ -20,5 +20,5 @@ public:
 
     void reset() override;
 private:
-    bool fit(rid id, const std::vector<criterion *>& cs) const;
+    bool fit(tuple_t t, const std::vector<criterion *>& cs) const;
 };

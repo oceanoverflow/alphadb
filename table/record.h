@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rid.h"
-#include "schema.h"
 
 #include <vector>
 #include <iostream>
@@ -12,7 +11,6 @@ private:
     rid rid_;
     int size_;
     char* data_; 
-    std::vector<column_definition> columns_;
 public:
     record();
     ~record();
