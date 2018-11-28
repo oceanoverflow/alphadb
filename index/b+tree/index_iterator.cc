@@ -1,6 +1,6 @@
 #include "index_iterator.h"
 
-index_iterator::index_iterator(const index_handle& handle, const std::vector<criterion *>& cs): criterions_{cs}, idx_(handle)
+index_iterator::index_iterator(const index_handle& handle, const criterion& cri): criterion_{cri}, idx_(handle)
 {
     tree_ = new b_plus_tree(handle);
     now_ = rid{-1, -1};
@@ -24,7 +24,7 @@ rid index_iterator::end() const
 
 rid index_iterator::next() const
 {
-    if (!fit(now_, criterions_)) return rid{-1, -1};
+    if (!fit(now_, criterion_)) return rid{-1, -1};
 
     rid ret = now_;
     leaf_node* node = static_cast<leaf_node *>(tree_->fetch_node(now_.page()));
@@ -44,9 +44,15 @@ void index_iterator::reset()
     now_ = rid{-1, -1};
 }
 
-bool index_iterator::fit(rid id, const std::vector<criterion *>& cs) const
+bool index_iterator::fit(rid id, const criterion& cs) const
 {
-    // get the record from the table handle
-    // check if it meet and criterions
-    return true;
+    key_t k = current_leaf_node_->index_format_.keys[id.slot()];
+    return cs.eval(static_cast<char *>(k));
+}
+
+bool index_iterator::can_stop_now(void* now) const
+{
+    if (criterion_.type == criterion_type::NOT_EQUAL) return false;
+
+    return !criterion_.eval(static_cast<char *>(now));
 }

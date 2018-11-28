@@ -2,10 +2,12 @@
 
 index_format::index_format()
 {
+    cmptr = new comparator(datatype);
 }
 
 index_format::~index_format()
 {
+    delete cmptr;
 }
 
 bool index_format::search(key_t key, rid& id) const

@@ -3,6 +3,7 @@
 #include "index_handle.h"
 #include "b_plus_tree.h"
 #include "iterator.h"
+#include "leaf_node.h"
 
 class index_iterator: public iterator
 {
@@ -10,9 +11,10 @@ private:
     b_plus_tree* tree_;
     index_handle idx_;
     
-    const std::vector<criterion *>& criterions_;
+    leaf_node* current_leaf_node_;
+    criterion criterion_;
 public:
-    index_iterator(const index_handle& index_handle, const std::vector<criterion *>& cs);
+    index_iterator(const index_handle& index_handle, const criterion& cri);
     ~index_iterator();
 
     rid begin() const override;
@@ -23,5 +25,7 @@ public:
 
     void reset() override;
 private:
-    bool fit(rid id, const std::vector<criterion *>& cs) const;
+    bool fit(rid id, const criterion& cs) const;
+
+    bool can_stop_now(void* now) const;
 };

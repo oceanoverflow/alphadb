@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rid.h"
+#include "schema.h"
 #include "comparator.h"
 #include <string.h>
 
@@ -63,7 +64,7 @@ struct index_format
 
     comparator* cmptr;
     int key_len;
-    int key_type;
+    data_type datatype;
     
     index_format();
     ~index_format();

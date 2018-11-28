@@ -6,6 +6,7 @@
 
 enum class criterion_type
 {
+    NOT_EQUAL,  // TODO add to code later
     EQUAL,
     LESS_THAN,
     LESS_EQUAL,
