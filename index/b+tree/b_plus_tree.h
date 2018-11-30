@@ -47,6 +47,9 @@ public:
     // old record folllowed by insertion of the updated record
     bool update(key_t k, const rid& oldp, const rid& newp);
     void destroy();
+
+    leaf_node* find_smallest_leaf_node() const; // TODO
+    leaf_node* find_largest_leaf_node() const;  // TODO
 private:
     void adjust_root();
 

@@ -247,7 +247,7 @@ leaf_node* b_plus_tree::find_leaf_node(key_t k) const
     if (is_empty()) return nullptr;
 
     // set C = root node, C stands for current node
-    auto node = root_;  
+    auto n = root_;  
     if (height_ == 1) 
         return static_cast<leaf_node *>(root_);
 
@@ -256,18 +256,68 @@ leaf_node* b_plus_tree::find_leaf_node(key_t k) const
     // a leaf of the tree is of the same length
     for(size_t i = 0; i < height_; i++)
     {
-        auto internalnode = static_cast<internal_node *>(node);
+        auto internalnode = static_cast<internal_node *>(n);
         index_handle_.get_this_page(internalnode->page_id_.page());
         // Let Ki = smallest search-key value, if any, greater than or equal to V
-        node = internalnode->lookup(k);
-
-        // while C is not a leaf node
-        if (0 < i && i < height_ -1)
-            index_handle_.unpin_page(internalnode->page_id_.page());   
+        n = internalnode->lookup(k);
 
         // traversing down the tree until a leaf node is reached
         if (i == height_ -1)
-            return static_cast<leaf_node *>(node);      
+            return static_cast<leaf_node *>(n);   
+
+        // while C is not root
+        if (i != 0)
+            index_handle_.unpin_page(internalnode->page_id_.page());     
+    }
+}
+
+// TODO: be careful of memory leak.
+leaf_node* b_plus_tree::find_smallest_leaf_node() const
+{
+    if (is_empty()) return nullptr;
+
+    auto n = root_;
+    if (height_ == 1)
+        return static_cast<leaf_node *>(root_);
+    
+    for(size_t i = 0; i < height_; i++)
+    {
+        auto internalnode = static_cast<internal_node *>(n);
+        index_handle_.get_this_page(internalnode->page_id_.page());
+
+        rid id = internalnode->index_format_.rids[0];
+        n = new node(id, this);
+
+        if (i == height_ - 1)
+            return static_cast<leaf_node *>(n);
+
+        if (i != 0)
+            index_handle_.unpin_page(internalnode->page_id_.page()); 
+    }
+}
+
+// TODO: be careful of memory leak.
+leaf_node* b_plus_tree::find_largest_leaf_node() const
+{
+    if (is_empty()) return nullptr;
+
+    auto n = root_;
+    if (height_ == 1)
+        return static_cast<leaf_node *>(root_);
+
+    for(size_t i = 0; i < height_; i++)
+    {
+        auto internalnode = static_cast<internal_node *>(n);
+        index_handle_.get_this_page(internalnode->page_id_.page());
+
+        rid id = internalnode->index_format_.rids[internalnode->size()-1];
+        n = new node(id, this);
+
+        if (i == height_ - 1)
+            return static_cast<leaf_node *>(n);
+
+        if (i != 0)
+            index_handle_.unpin_page(internalnode->page_id_.page());
     }
 }
 
