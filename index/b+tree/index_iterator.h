@@ -12,10 +12,14 @@ private:
     b_plus_tree* tree_;
     index_handle idx_;
     
-    bool found_one_;
     bool descending_;
-    rid        current_position_;
-    leaf_node* current_leaf_node_;
+    mutable bool next_is_null_;
+    mutable bool found_one_;
+    
+    leaf_node* start_;
+    leaf_node* end_;
+    mutable leaf_node* current_;
+
     criterion criterion_;
     comparator* comparator_;
 public:

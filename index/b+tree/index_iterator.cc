@@ -1,23 +1,89 @@
 #include "index_iterator.h"
 
 /*
+ascending:
+                start
   equal:             |--|
   smallest -------------------------------> largest
 
+                start
   >= >               |--------------------
   smallest -------------------------------> largest
 
+        start
   < <=      ---------|
   smallest -------------------------------> largest
+  
+descending:
+                        start
+  equal:             |--|
+  smallest -------------------------------> largest
 
+                                          start
+  >= >               |--------------------
+  smallest -------------------------------> largest
+
+                     start
+  < <=      ---------|
+  smallest -------------------------------> largest
 */
 
 index_iterator::index_iterator(const index_handle& handle, const criterion& cri, bool desc)
-: criterion_{cri}, idx_(handle), descending_{desc}, found_one_{false}
+: criterion_{cri}, idx_(handle), descending_{desc}, found_one_{false}, next_is_null_{true}
 {
     tree_ = new b_plus_tree(handle);
     comparator_ = new comparator(criterion_.coldef.type.type);
     now_ = rid{-1, -1};
+
+    if (!descending_) {
+        if (criterion_.type == criterion_type::GREATER_EQUAL 
+            || criterion_.type == criterion_type::GREATER_THAN) {
+
+            start_ = tree_->find_leaf_node(criterion_.val);
+            end_ = tree_->find_largest_leaf_node();
+
+        }
+
+        if (criterion_.type == criterion_type::LESS_EQUAL 
+            || criterion_.type == criterion_type::LESS_THAN) {
+            
+            start_ = tree_->find_smallest_leaf_node();
+            end_ = tree_->find_leaf_node(criterion_.val);
+
+        }
+        
+        if (criterion_.type == criterion_type::EQUAL) {
+            // the start_ should be leftest value
+            end_ = nullptr;
+        }
+
+        now_ = rid{start_->page_id_.page(), 0};
+    }
+    else {
+        if (criterion_.type == criterion_type::GREATER_EQUAL 
+            || criterion_.type == criterion_type::GREATER_THAN) {
+
+            start_ = tree_->find_largest_leaf_node();
+            end_ = tree_->find_leaf_node(criterion_.val);
+
+        }
+
+        if (criterion_.type == criterion_type::LESS_EQUAL 
+            || criterion_.type == criterion_type::LESS_THAN) {
+            
+            start_ = tree_->find_smallest_leaf_node();
+            end_ = tree_->find_leaf_node(criterion_.val);
+
+        }
+
+        if (criterion_.type == criterion_type::EQUAL) {
+            // the start_ should be rightest value
+            end_ = nullptr;
+        }
+
+        now_ = rid{start_->page_id_.page(), start_->size()-2};
+    }
+
 }
 
 index_iterator::~index_iterator()
@@ -28,7 +94,6 @@ index_iterator::~index_iterator()
 
 rid index_iterator::begin() const
 {
-    // return the first rid that meet the criterion
     return now_;
 }
 
@@ -37,36 +102,43 @@ rid index_iterator::end() const
     return rid{-1, -1};
 }
 
+// TODO missing descending version
 rid index_iterator::next() const
 {
-    // if (!fit(now_, criterion_)) return rid{-1, -1};
-
-    // rid ret = now_;
-    // leaf_node* node = static_cast<leaf_node *>(tree_->fetch_node(now_.page()));
-    // int count = node->index_format_.hdr.count;
-    // node->pin_node();
-    // if (now_.slot() < count-2)
-    //     now_.set(now_.page(), now_.slot() + 1);
-    // else
-    //     now_.set(node->index_format_.rids[count-1].page(), 0);
-    // node->unpin_node();
-
-    // return ret;
-
-    // should have two for loop, the first one is used for
-    // looping through blocks, the second one in used for
-    // looping in the block
-
-
+    current_ = start_;
     
-    for(; current_leaf_node_ != nullptr;)
+    for(; !next_is_null_;)
     {
+        if (current_->page_id_.page() == end_->page_id_.page()) {
+            next_is_null_ = true;
+        }
+
+        current_->pin_node();
+
+        for(size_t j = now_.slot(); j < current_->size()-1; j++)
+        {
+            now_ = rid{now_.page(), j};
+            if (criterion_.eval(static_cast<char *>(current_->index_format_.keys[j]))) {
+                found_one_ = true;
+                return rid{current_->page_id_.page(), j};
+            }
+            else {
+                if (found_one_ && can_stop_now(current_->index_format_.keys[j])) {
+                    return rid{-2, -2};
+                }
+            }
+        }
         
-        
-        
-        // next leaf node
+        rid next = current_->index_format_.rids[current_->size()-1];
+        now_ = next;
+
+        current_->unpin_node();
+        delete current_;
+        current_ = nullptr;
+        current_ = new leaf_node(next, tree_);
     }
-    
+
+    return rid{-1, -1};
 }
 
 void index_iterator::reset()
@@ -76,7 +148,7 @@ void index_iterator::reset()
 
 bool index_iterator::fit(rid id, const criterion& cs) const
 {
-    key_t k = current_leaf_node_->index_format_.keys[id.slot()];
+    key_t k = current_->index_format_.keys[id.slot()];
     return cs.eval(static_cast<char *>(k));
 }
 
