@@ -105,13 +105,13 @@ int yyerror(YYLTYPE* llocp, parser_result* result, yyscan_t scanner, const char*
 %token <fval> FLOATVAL
 %token <ival> INTVAL
 
-%token COLUMNS CREATE CHAR
+%token BEGIN COLUMNS CREATE CHAR COMMIT
 %token DROP DELETE DOUBLE
 %token FLOAT FROM FALSE
 %token INT INTO INDEX INSERT INTEGER 
 %token LONG
 %token SET SHOW SELECT
-%token TABLE TABLES TRUE TRUNCATE
+%token TABLE TABLES TRUE TRUNCATE TRANSACTION
 %token UPDATE VALUES VARCHAR WHERE
 
 %type <stmt_vec>	    statement_list
