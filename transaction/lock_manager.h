@@ -22,8 +22,6 @@ This algorithm guarantess freedom from starvation for lock requests, since a req
 can never be granted while a request received earlier is waiting to be granted.
 */
 
-// TODO make lock manager a template class
-// template<data_type T>
 class lock_manager
 {
 private:
@@ -32,7 +30,6 @@ public:
     lock_manager();
     ~lock_manager();
 
-    bool lock(txn_id_t id, data_item item, lock_mode mode);
-    bool unlock(txn_id_t id, data_item item);
-    void unlock_all(txn_id_t id);
+    void lock(txn_id_t id, data_item item);
+    void unlock(txn_id_t id, data_item item);
 };

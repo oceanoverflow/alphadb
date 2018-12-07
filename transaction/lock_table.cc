@@ -24,101 +24,71 @@ lock_table::~lock_table()
 
 int lock_table::hash(data_item item) const
 {
-    return *reinterpret_cast<int *>(item) % table_size_;
+    return reinterpret_cast<int>(item) % table_size_;
 }
 
-bool lock_table::search(data_item item, txn_id_t id) const
+lock_entry* lock_table::search(data_item item)
 {
     int pos = hash(item);
     lock_entry* pointer = table_[pos];
 
     while(pointer != nullptr){
         if (item == pointer->item) {
-            for(auto& pair : pointer->txn_ids)
-            {
-                if (pair.first == id) {
-                    return true;
-                }
-            }
+            return pointer;
         }
         pointer = pointer->next;
     }
-    return false;
+    return nullptr;
 }
 
-bool lock_table::add(data_item item, txn_id_t id, lock_mode mode)
+lock_entry* lock_table::add(data_item item)
 {
-    if (search(item, id)) {
-        return false;
+    std::unique_lock<std::mutex> lk(mutex_);
+    lock_entry* pointer = search(item);
+    if (pointer != nullptr) {
+        return pointer;
     }
     else {
         int pos = hash(item);
         lock_entry* entry = new lock_entry();
-        entry->txn_ids.push_back({id, mode});
         
         lock_entry* head = table_[pos];
         table_[pos] = entry;
         entry->next = head;
         entry->prev = nullptr;
         head->prev = entry;
-
         
-        if (m_.find(id) == m_.end()) {
-            m_[id] = new std::vector<data_item>();
-        }
-        else {
-            m_[id]->push_back(item);
-        }
-        
-        return true;
+        return entry;
     }
 }
 
-bool lock_table::remove(data_item item, txn_id_t id)
+bool lock_table::remove(data_item item)
 {
-    if (!search(item, id)) {
+    std::unique_lock<std::mutex> lk(mutex_);
+    lock_entry* pointer = search(item);
+    if (pointer == nullptr) {
         return false;
     }
-    else {
+    else {        
         int pos = hash(item);
-        lock_entry* pointer = table_[pos];
-        
-        while(pointer != nullptr){
-            if (pointer->item == item) {
-                auto result = std::find(pointer->txn_ids.begin(), pointer->txn_ids.end(), id);
-                if (result != std::end(pointer->txn_ids)) {
-                    pointer->txn_ids.erase(result);
-                }
-            }
-        }
-        auto iter = std::find(m_[id]->begin(), m_[id]->end(), item);
-        
-        if (iter != m_[id]->end()) {
-            m_[id]->erase(iter);
-        }
-        
-        if (pointer->txn_ids.size() == 0) {
-            if (pointer == table_[pos]) {
-                table_[pos] = pointer->next;
-                delete pointer;
-                pointer = nullptr;
-                return true;
-            }
-
-            
-            if (pointer->next == nullptr) {
-                pointer->prev->next = nullptr;
-                delete pointer;
-                pointer = nullptr;
-                return true;
-            }
-
-            pointer->next->prev = pointer->prev;
-            pointer->prev->next = pointer->next;
+        if (pointer == table_[pos]) {
+            table_[pos] = pointer->next;
             delete pointer;
             pointer = nullptr;
             return true;
         }
-        
+
+        if (pointer->next == nullptr) {
+            pointer->prev->next = nullptr;
+            delete pointer;
+            pointer = nullptr;
+            return true;
+        }
+
+        pointer->next->prev = pointer->prev;
+        pointer->prev->next = pointer->next;
+        delete pointer;
+        pointer = nullptr;
+        return true;  
     }
 }

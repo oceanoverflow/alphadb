@@ -23,9 +23,14 @@ held, the lock manager grants the request only if it is compatible with the lock
 that are currently held, and all earlier requests have been granted already.
 Otherwise the request has to wait.
 */
-bool lock_manager::lock(txn_id_t id, data_item item, lock_mode mode)
+void lock_manager::lock(txn_id_t id, data_item item)
 {
-    return lock_table_->add(item, id, mode);
+    lock_entry* entry = lock_table_->add(item);
+    std::unique_lock<std::mutex> lk(entry->mutex);
+    entry->cnt++;
+    entry->cond_var.wait(lk, [&]{ return !entry->locked; });
+    entry->txn_id = id;
+    entry->locked = true;
 }
 
 /*
@@ -33,27 +38,19 @@ When the lock manager receives an unlock message from a transaction, it
 deletes the record for that data item in the linked list corresponding to that
 transtion.
 
-TODO: It tests the record that follows, if any, as described in the previous
+It tests the record that follows, if any, as described in the previous
 paragraph, to see if that request can now be granted. If it can, the lock manager
 grants that request, and process the record following it, if any, similarly, 
 and so on.
 */
-bool lock_manager::unlock(txn_id_t id, data_item item)
+void lock_manager::unlock(txn_id_t id, data_item item)
 {
-    return lock_table_->remove(item, id);
-}
-
-/*
-If a transaction aborts, the lock manager deletes any waiting request made
-by the transaction. Once the database system has taken appropriate actions
-to undo the transaction, it releases all locks held by the aborted transaction.
-*/
-void lock_manager::unlock_all(txn_id_t id)
-{
-    auto vec = lock_table_->m_[id];
-    
-    for(auto& item : *vec)
-    {
-        lock_table_->remove(item, id);
+    lock_entry* entry = lock_table_->search(item);
+    entry->locked = false;
+    entry->txn_id = 0;
+    entry->cnt--;
+    entry->cond_var.notify_one();
+    if (entry->cnt == 0) {
+        lock_table_->remove(item);
     }
 }
