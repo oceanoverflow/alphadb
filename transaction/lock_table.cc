@@ -2,6 +2,12 @@
 
 #include <algorithm>
 
+/*
+* locking entire table restricts concurrency (large granularity)
+* locking only items affected requires much overhead (small granularity)
+* locking only rows returned yields new anomaly (medium granularity)
+*/
+
 lock_table::lock_table(int size): table_size_{size}
 {
     table_ = new lock_entry*[table_size_];

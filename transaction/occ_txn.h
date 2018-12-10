@@ -1,6 +1,6 @@
 #pragma once
 
-#include "2pl_txn.h"
+#include "twopl_txn.h"
 
 class occ_txn: public twopl_txn
 {
@@ -9,6 +9,4 @@ private:
 public:
     occ_txn(/* args */);
     ~occ_txn();
-
-    
 };

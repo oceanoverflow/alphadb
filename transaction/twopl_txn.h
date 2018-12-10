@@ -2,6 +2,13 @@
 
 #include "txn.h"
 
+/*
+two-phase locking: All locks are acquired in a transaction before any lock is released.
+
+strict
+two-phase locking: The transaction holds all locks until completion.
+*/
+
 class twopl_txn: public txn
 {
 private:
