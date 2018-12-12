@@ -41,6 +41,7 @@ struct column_definition
 
 class schema
 {
+    friend class row;
     friend class table_manager;
     friend class table_iterator;
 private:
