@@ -1,5 +1,6 @@
 #include "table_iterator.h"
 #include "table_format.h"
+#include "row.h"
 #include <string>
 #include <memory>
 
@@ -49,38 +50,25 @@ void table_iterator::reset()
     now_ = rid{-1, -1};
 }
 
-// TODO
-// here the schema assumes the record is of same length,
-// but we need variable length record to save some space
-// in case of VARCHAR in record
 bool table_iterator::fit(tuple_t t, const std::vector<criterion *>& cs) const
 {
     void* data = t.first;
-    ssize_t len = t.second;
-    bool ret = true;
+    schema schm = tbl_handle_.schema_;
+    auto vct = row::decode(static_cast<char *>(data), schm);
+    bool fit = true;
     
-    for(int i = 0; i < cs.size(); i++)
+    for(auto& cri : cs)
     {
-        auto cri = cs[i];
-        int offset = 0;
-        
-        for(auto c : tbl_handle_.schema_.col_defs_)
+        int pos;
+        for(size_t i = 0; i < schm.col_defs_.size(); i++)
         {
-            if (c == cri->coldef) break;
-            offset += c.type.length;
-
-            if (offset > len) {
-                ret = false;
+            if (schm.col_defs_[i] == cri->coldef) {
+                pos = i;
                 break;
             }
         }
-
-        if (ret == false) break;
-        
-        ret = cri->eval(static_cast<char *>(data + offset));
-
-        if (ret == false) break;
+        fit &= cri->eval(static_cast<char *>(vct[pos]));
     }
-    
-    return ret;
+
+    return fit;
 }
