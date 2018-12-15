@@ -18,7 +18,7 @@ two-phase locking: The transaction holds all locks until completion.
 class twopl_txn: public txn
 {
 private:
-    
+    void release_resource();
 public:
     twopl_txn();
     ~twopl_txn();

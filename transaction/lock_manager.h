@@ -30,6 +30,9 @@ public:
     lock_manager();
     ~lock_manager();
 
-    void lock(txn_id_t id, data_item item);
-    void unlock(txn_id_t id, data_item item);
+    void lock_s(txn_id_t txn_id, data_item item) { lock(txn_id, lock_mode::shared, item); }
+    void lock_x(txn_id_t txn_id, data_item item) { lock(txn_id, lock_mode::exclusive, item); }
+    
+    void lock(txn_id_t txn_id, lock_mode mode, data_item item);
+    void unlock(txn_id_t txn_id, data_item item);
 };

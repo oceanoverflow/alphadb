@@ -23,14 +23,50 @@ held, the lock manager grants the request only if it is compatible with the lock
 that are currently held, and all earlier requests have been granted already.
 Otherwise the request has to wait.
 */
-void lock_manager::lock(txn_id_t id, data_item item)
+void lock_manager::lock(txn_id_t txn_id, lock_mode mode, data_item item)
 {
     lock_entry* entry = lock_table_->add(item);
     std::unique_lock<std::mutex> lk(entry->mutex);
-    entry->cnt++;
-    entry->cond_var.wait(lk, [&]{ return !entry->locked; });
-    entry->txn_id = id;
-    entry->locked = true;
+    entry->wait_list.push_back({txn_id, mode, lock_status::waiting});
+    entry->cond_var.wait(lk, [&]{ 
+        
+        if (mode == lock_mode::exclusive) {
+            auto head = entry->wait_list.begin();
+            if (std::get<0>(*head) == txn_id) {
+                *head = {txn_id, mode, lock_status::granted};
+                entry->current_lock_mode = lock_mode::exclusive;
+                return true;
+            }
+            else
+                return false;    
+        }
+        else {
+            auto iter = entry->wait_list.begin();
+            bool all_shared = true;
+            bool all_granted = true;
+            for(; iter != entry->wait_list.end(); iter++)
+            {
+                if (std::get<0>(*iter) == txn_id) {
+                    if (all_shared && all_granted) {
+                        *iter = {txn_id, mode, lock_status::granted};
+                        entry->shared_lock_cnt++;
+                    }
+                    return all_shared && all_granted;
+                }
+                else {
+                    if (std::get<1>(*iter) != lock_mode::shared)
+                        all_shared = false;
+                    
+                    if (std::get<2>(*iter) != lock_status::granted)
+                        all_granted = false;
+                }
+            }
+
+        }
+    });
+    
+    if (mode == lock_mode::shared)
+        entry->cond_var.notify_all();
 }
 
 /*
@@ -43,14 +79,17 @@ paragraph, to see if that request can now be granted. If it can, the lock manage
 grants that request, and process the record following it, if any, similarly, 
 and so on.
 */
-void lock_manager::unlock(txn_id_t id, data_item item)
+void lock_manager::unlock(txn_id_t txn_id, data_item item)
 {
     lock_entry* entry = lock_table_->search(item);
-    entry->locked = false;
-    entry->txn_id = 0;
-    entry->cnt--;
-    entry->cond_var.notify_one();
-    if (entry->cnt == 0) {
-        lock_table_->remove(item);
+    entry->wait_list.remove({txn_id, entry->current_lock_mode, lock_status::granted});
+
+    if ( (entry->current_lock_mode == lock_mode::shared && --entry->shared_lock_cnt == 0) 
+        || entry->current_lock_mode == lock_mode::exclusive) {
+        entry->current_lock_mode = lock_mode::none;
+        entry->cond_var.notify_all();
     }
+
+    if (entry->wait_list.size() == 0)
+        lock_table_->remove(item);
 }

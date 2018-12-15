@@ -1,5 +1,7 @@
 #pragma once
 
+#include <list>
+#include <utility>
 #include <mutex>
 #include <atomic>
 #include <unordered_map>
@@ -8,6 +10,19 @@
 typedef unsigned long txn_id_t;
 
 typedef void* data_item;
+
+enum class lock_status
+{
+    granted,
+    waiting
+};
+
+enum class lock_mode
+{
+    none,
+    shared,
+    exclusive
+};
 
 /*
         lock compatibility matrix
@@ -44,10 +59,10 @@ struct lock_entry
 {
     std::mutex mutex;
     std::condition_variable cond_var;
-    
-    bool locked;
-    std::atomic<int> cnt;
-    txn_id_t txn_id;
+
+    std::list<std::tuple<txn_id_t, lock_mode, lock_status>> wait_list;
+    lock_mode current_lock_mode;
+    int shared_lock_cnt;
     data_item item;
     
     lock_entry* next;
@@ -57,7 +72,7 @@ struct lock_entry
     ~lock_entry();
 };
 
-lock_entry::lock_entry(): locked{false}, cnt{0} {}
+lock_entry::lock_entry() {}
 
 class lock_table
 {
