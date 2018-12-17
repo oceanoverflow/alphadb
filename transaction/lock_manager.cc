@@ -26,8 +26,11 @@ Otherwise the request has to wait.
 void lock_manager::lock(txn_id_t txn_id, lock_mode mode, data_item item)
 {
     lock_entry* entry = lock_table_->add(item);
+    {
+        std::unique_lock<std::mutex> lk(entry->mutex);
+        entry->wait_list.push_back({txn_id, mode, lock_status::waiting});
+    }
     std::unique_lock<std::mutex> lk(entry->mutex);
-    entry->wait_list.push_back({txn_id, mode, lock_status::waiting});
     entry->cond_var.wait(lk, [&]{ 
         
         if (mode == lock_mode::exclusive) {
@@ -82,13 +85,19 @@ and so on.
 void lock_manager::unlock(txn_id_t txn_id, data_item item)
 {
     lock_entry* entry = lock_table_->search(item);
-    entry->wait_list.remove({txn_id, entry->current_lock_mode, lock_status::granted});
-
-    if ( (entry->current_lock_mode == lock_mode::shared && --entry->shared_lock_cnt == 0) 
-        || entry->current_lock_mode == lock_mode::exclusive) {
-        entry->current_lock_mode = lock_mode::none;
-        entry->cond_var.notify_all();
+    bool need_notify = false;
+    {
+        std::lock_guard<std::mutex> lk(entry->mutex);
+        entry->wait_list.remove({txn_id, entry->current_lock_mode, lock_status::granted});
+        if ( (entry->current_lock_mode == lock_mode::shared && --entry->shared_lock_cnt == 0) 
+            || entry->current_lock_mode == lock_mode::exclusive) {
+            entry->current_lock_mode = lock_mode::none;
+            need_notify = true;
+        }
     }
+    
+    if (need_notify)
+        entry->cond_var.notify_all();
 
     if (entry->wait_list.size() == 0)
         lock_table_->remove(item);
